@@ -1,6 +1,9 @@
 import os
 import re
+from importlib import import_module
+
 from slackclient import SlackClient
+
 from plugin import PluginProvider
 
 
@@ -22,15 +25,19 @@ class Bot(object):
         self.slack_client = SlackClient(self.slack_bot_token)
         self.load_plugins(plugins)
         self.plugins = PluginProvider.get_plugins()
-        print(self.plugins)
 
     def auth(self):
         self.starterbot_id = self.slack_client.api_call("auth.test")["user_id"]
 
+    # def dynamic_import(self, abs_module_path, class_name):
+    #     module_object = import_module(abs_module_path)
+    #     target_class = getattr(module_object, class_name)
+    #     return target_class
+
     @staticmethod
     def load_plugins(plugins):
-        for plugin in plugins:
-            __import__('plugins', fromlist=[plugin])
+        """Later add selective plugins import."""
+        import_module('plugins', package=__name__)
 
     def parse_bot_commands(self, slack_events):
         """
@@ -39,10 +46,21 @@ class Bot(object):
         If its not found, then this function returns None, None.
         """
         for event in slack_events:
-            if event["type"] == "message" and not "subtype" in event:
-                user_id, message = self.parse_direct_mention(event["text"])
+            if event['type'] == 'message' and not 'subtype' in event:
+                user_id, message = self.parse_exclamation_mark_message(event['text'])
+                if not user_id:
+                    user_id, message = self.parse_direct_mention(event['text'])
                 if user_id == self.starterbot_id:
-                    return message, event["channel"]
+                    return message, event['channel']
+        return None, None
+
+    def parse_exclamation_mark_message(self, message_text):
+        """
+        Find all messages with exclamation_mark and return the user ID
+        and message for further service.
+        """
+        if message_text.startswith('!'):
+            return self.starterbot_id, message_text.strip()
         return None, None
 
     @staticmethod
@@ -64,7 +82,7 @@ class Bot(object):
         response = None
         # This is where you start to implement more commands!
         if command.startswith(EXAMPLE_COMMAND):
-            response = "Uuuu działa!"
+            response = "Uuuu działa, ale jeszcze nic nie umiem!"
 
         # Sends the response back to the channel
         self.slack_client.api_call(
