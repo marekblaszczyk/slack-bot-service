@@ -1,1 +1,1 @@
-Bonnier Business Polska Slack Bot
+Simple Slack Bot
